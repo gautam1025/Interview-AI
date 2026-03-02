@@ -1,0 +1,27 @@
+{
+  "srv": [
+    {
+      "name": "ac-2p7pfjk-shard-00-01.clx35xg.mongodb.net",
+      "port": 27017,
+      "priority": 0,
+      "weight": 0
+    },
+    {
+      "name": "ac-2p7pfjk-shard-00-02.clx35xg.mongodb.net",
+      "port": 27017,
+      "priority": 0,
+      "weight": 0
+    },
+    {
+      "name": "ac-2p7pfjk-shard-00-00.clx35xg.mongodb.net",
+      "port": 27017,
+      "priority": 0,
+      "weight": 0
+    }
+  ],
+  "txt": [
+    [
+      "authSource=admin&replicaSet=atlas-ahfcgp-shard-0"
+    ]
+  ]
+}

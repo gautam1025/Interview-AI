@@ -1,0 +1,27 @@
+{
+  "srv": [
+    {
+      "name": "ac-zrm1hsp-shard-00-02.g4npokq.mongodb.net",
+      "port": 27017,
+      "priority": 0,
+      "weight": 0
+    },
+    {
+      "name": "ac-zrm1hsp-shard-00-01.g4npokq.mongodb.net",
+      "port": 27017,
+      "priority": 0,
+      "weight": 0
+    },
+    {
+      "name": "ac-zrm1hsp-shard-00-00.g4npokq.mongodb.net",
+      "port": 27017,
+      "priority": 0,
+      "weight": 0
+    }
+  ],
+  "txt": [
+    [
+      "authSource=admin&replicaSet=atlas-9dsv8z-shard-0"
+    ]
+  ]
+}
