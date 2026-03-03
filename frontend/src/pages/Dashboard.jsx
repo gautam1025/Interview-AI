@@ -6,25 +6,28 @@ import {
   ChevronRight, Calendar, Briefcase, Loader2,
   AlertCircle, Code2, ArrowUpRight,
 } from "lucide-react";
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts"
 
 /* ─── helpers ─────────────────────────────────────────────── */
-const pct         = s => Math.min((s || 0) * 10, 100); // score/10 → percent
-const scoreColor  = s => s >= 7 ? "text-emerald-600" : s >= 5 ? "text-amber-600" : "text-red-500";
-const barColor    = s => s >= 7 ? "bg-emerald-500"   : s >= 5 ? "bg-amber-400"   : "bg-red-400";
-const badgeCls    = s => s >= 7 ? "badge-green"      : s >= 5 ? "badge-amber"    : "badge-red";
-const badgeLbl    = s => s >= 7 ? "Strong"           : s >= 5 ? "Average"        : "Needs Work";
+const pct = s => Math.min((s || 0) * 10, 100); // score/10 → percent
+const scoreColor = s => s >= 7 ? "text-emerald-600" : s >= 5 ? "text-amber-600" : "text-red-500";
+const barColor = s => s >= 7 ? "bg-emerald-500" : s >= 5 ? "bg-amber-400" : "bg-red-400";
+const badgeCls = s => s >= 7 ? "badge-green" : s >= 5 ? "badge-amber" : "badge-red";
+const badgeLbl = s => s >= 7 ? "Strong" : s >= 5 ? "Average" : "Needs Work";
 
 /* ─── StatCard ────────────────────────────────────────────── */
 function StatCard({ icon: Icon, label, value, sub, accent }) {
   const a = {
-    blue:    { bg: "bg-blue-50",    icon: "text-blue-600",    border: "border-blue-100"    },
+    blue: { bg: "bg-blue-50", icon: "text-blue-600", border: "border-blue-100" },
     emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "border-emerald-100" },
-    violet:  { bg: "bg-violet-50",  icon: "text-violet-600",  border: "border-violet-100"  },
-    amber:   { bg: "bg-amber-50",   icon: "text-amber-600",   border: "border-amber-100"   },
+    violet: { bg: "bg-violet-50", icon: "text-violet-600", border: "border-violet-100" },
+    amber: { bg: "bg-amber-50", icon: "text-amber-600", border: "border-amber-100" },
   }[accent] || {};
 
   return (
-    <div className="card hover:-translate-y-0.5 transition-all duration-300 group cursor-default" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.06)'}}>
+    <div className="card hover:-translate-y-0.5 transition-all duration-300 group cursor-default" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.06)' }}>
       <div className="flex items-start justify-between mb-4">
         <div className={`w-10 h-10 rounded-xl ${a.bg} border ${a.border} flex items-center justify-center`}>
           <Icon size={18} className={a.icon} />
@@ -41,8 +44,8 @@ function StatCard({ icon: Icon, label, value, sub, accent }) {
 /* ─── Main ────────────────────────────────────────────────── */
 function Dashboard() {
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,14 +61,21 @@ function Dashboard() {
     })();
   }, []);
 
-  const total    = sessions.length;
+  const total = sessions.length;
   const avgScore = total
     ? (sessions.reduce((s, x) => s + (x.totalScore || 0), 0) / total).toFixed(1)
     : 0;
-  const best     = total ? Math.max(...sessions.map(s => s.totalScore || 0)) : 0;
+  const best = total ? Math.max(...sessions.map(s => s.totalScore || 0)) : 0;
   const lastDate = sessions[0]
     ? new Date(sessions[0].createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
     : "—";
+
+  const chartData = sessions
+    .filter(s => s.totalScore)
+    .map((s, index) => ({
+      label: `Attempt ${index + 1}`,
+      score: s.totalScore,
+    }));
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -83,14 +93,59 @@ function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-        <StatCard icon={Trophy}     label="Total Sessions"  value={total}           sub="All time"            accent="blue"    />
-        <StatCard icon={Target}     label="Average Score"   value={`${avgScore}/10`} sub="Across all sessions" accent="emerald" />
-        <StatCard icon={TrendingUp} label="Best Score"      value={`${best}/10`}    sub="Personal best"       accent="violet"  />
-        <StatCard icon={Clock}      label="Last Session"    value={lastDate}        sub="Most recent"         accent="amber"   />
+        <StatCard icon={Trophy} label="Total Sessions" value={total} sub="All time" accent="blue" />
+        <StatCard icon={Target} label="Average Score" value={`${avgScore}/10`} sub="Across all sessions" accent="emerald" />
+        <StatCard icon={TrendingUp} label="Best Score" value={`${best}/10`} sub="Personal best" accent="violet" />
+        <StatCard icon={Clock} label="Last Session" value={lastDate} sub="Most recent" accent="amber" />
+      </div>
+
+      {/* Performance Chart */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.06)' }}>
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-slate-800">Performance Trend</h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Score progression over completed interviews
+          </p>
+        </div>
+
+        {chartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <defs>
+                <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <YAxis domain={[0, 10]} tick={{ fontSize: 12 }} />
+
+              <Tooltip />
+
+              <Line
+                type="monotone"
+                dataKey="score"
+                stroke="#2563eb"
+                strokeWidth={3}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+                isAnimationActive={true}
+                animationDuration={800}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center py-12 text-slate-400 text-sm">
+            Complete interviews to see performance trend.
+          </div>
+        )}
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{boxShadow:'0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.06)'}}>
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04),0 4px 12px rgba(0,0,0,0.06)' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <div>
