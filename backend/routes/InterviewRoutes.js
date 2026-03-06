@@ -8,18 +8,38 @@ const { generateQuestions, evaluateAnswers } = require("../services/aiService");
 router.post("/create", protect, async (req, res) => {
   const { role, experienceLevel } = req.body;
 
+  // 🔹 Get previous completed sessions
+  const previousSessions = await InterviewSession
+    .find({ user: req.user._id, totalScore: { $gt: 0 } })
+    .sort({ createdAt: -1 })
+    .limit(3);
+
+  // 🔹 Default difficulty
+  let difficulty = "easy";
+
+  // 🔹 Calculate recent average score
+  if (previousSessions.length > 0) {
+    const avgScore =
+      previousSessions.reduce((sum, s) => sum + s.totalScore, 0) /
+      previousSessions.length;
+
+    if (avgScore >= 7) difficulty = "hard";
+    else if (avgScore >= 4) difficulty = "medium";
+  }
+
   try {
     if (!req.user) {
       return res.status(401).json({ message: "User not found" });
     }
 
     // Generate AI Questions
-    const questions = await generateQuestions(role, experienceLevel);
+    const questions = await generateQuestions(role, experienceLevel, difficulty);
 
     const session = await InterviewSession.create({
       user: req.user._id,
       role,
       experienceLevel,
+      difficulty,
       questions,
     });
 

@@ -5,11 +5,11 @@ import { useAuth } from "../context/AuthContext";
 import { BrainCircuit, Loader2, Eye, EyeOff } from "lucide-react";
 
 function Login() {
-  const [email, setEmail]       = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const { login } = useAuth();
 
   const handleLogin = async (e) => {

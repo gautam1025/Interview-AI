@@ -2,27 +2,24 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-const generateQuestions = async (role, experienceLevel) => {
+const generateQuestions = async (role, experienceLevel, difficulty) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
-You are a professional technical interviewer.
+      You are a professional technical interviewer.
 
-Generate 5 technical interview questions for:
-Role: ${role}
-Experience Level: ${experienceLevel}
+      Generate 5 ${difficulty} difficulty interview questions for a ${role} developer with ${experienceLevel} experience.
 
-Return ONLY valid JSON in this format:
-[
-  { "question": "Question text here" },
-  { "question": "Question text here" }
-]
+      Return ONLY valid JSON in this format:
+      [
+        { "question": "Question text here" },
+        { "question": "Question text here" }
+      ]
 
-Do NOT add explanations.
-Do NOT add markdown.
-Only return pure JSON.
-`;
+      Do NOT add explanations.
+      Do NOT add markdown.
+      Only return pure JSON.`;
 
     const result = await model.generateContent(prompt);
     const response = result.response.text();

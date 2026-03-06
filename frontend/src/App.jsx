@@ -8,12 +8,13 @@ import StartInterview from "./pages/StartInterview";
 import Interview from "./pages/Interview";
 import Evaluation from "./pages/Evaluation";
 import Layout from "./components/Layout";
+import Footer from "./components/Footer";
 
 function App() {
   const { token } = useAuth();
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 relative pb-[72px]">
       <Routes>
         <Route path="/" element={!token ? <Login /> : <Navigate to="/dashboard" />} />
         <Route path="/register" element={<Register />} />
@@ -67,6 +68,7 @@ function App() {
           }
         />
       </Routes>
+      <Footer />
     </div>
   );
 }
