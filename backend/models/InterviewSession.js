@@ -6,6 +6,7 @@ const interviewSessionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true, // added for query performance
     },
     role: {
       type: String,

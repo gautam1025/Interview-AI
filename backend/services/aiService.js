@@ -50,7 +50,13 @@ const evaluateAnswers = async (role, experienceLevel, questions, answers) => {
         Role: ${role}
         Experience Level: ${experienceLevel}
 
-        Evaluate the candidate's answers.
+        Evaluate the candidate's answers based on their experience level.
+
+        CRITICAL INSTRUCTIONS FOR EVALUATION:
+        - Some answers may contain raw programming code snippets. 
+        - If an answer contains code, you MUST evaluate it for syntax correctness, logical accuracy, time/space complexity, and best practices.
+        - Treat pure text answers as theoretical knowledge.
+        - Be objective and constructively critical.
 
         Here are the questions and answers:
 
