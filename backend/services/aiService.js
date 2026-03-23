@@ -36,12 +36,13 @@ const generateQuestions = async (role, experienceLevel, difficulty) => {
     throw new Error("Failed to generate questions from Gemini AI");
   }
 };
-const evaluateAnswers = async (role, experienceLevel, questions, answers) => {
+const evaluateAnswers = async (role, experienceLevel, questions, answers, hintsUsed = {}) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const formattedQA = questions.map((q, index) => {
-      return `Question: ${q}\nAnswer: ${answers[index] || "No Answer Provided"}`;
+      const hintCount = hintsUsed[index] || 0;
+      return `Question ${index + 1}: ${q}\nAnswer: ${answers[index] || "No Answer Provided"}${hintCount > 0 ? `\n(NOTE: Candidate used ${hintCount} AI hint(s) for this question)` : ""}`;
     }).join("\n\n");
 
     const prompt = `
@@ -57,6 +58,7 @@ const evaluateAnswers = async (role, experienceLevel, questions, answers) => {
         - If an answer contains code, you MUST evaluate it for syntax correctness, logical accuracy, time/space complexity, and best practices.
         - Treat pure text answers as theoretical knowledge.
         - Be objective and constructively critical.
+        - IMPORTANT: If a candidate used AI hints (noted in the Q&A below), you MUST penalize their technical and overall scores for those specific questions. The more hints used, the higher the penalty.
 
         Here are the questions and answers:
 
@@ -84,14 +86,39 @@ const evaluateAnswers = async (role, experienceLevel, questions, answers) => {
     const response = result.response.text();
 
     const cleaned = response.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-
-    return parsed;
-
+    const evaluation = JSON.parse(cleaned); // Renamed parsed to evaluation for clarity with the new return structure
+    return {
+      totalScore: evaluation.overallScore,
+      evaluation,
+    };
   } catch (error) {
-    console.error("Evaluation Error:", error.message);
-    throw new Error("Failed to evaluate answers");
+    console.error("AI Evaluation Error:", error); // Updated error message
+    throw error; // Throws the original error object
   }
 };
 
-module.exports = { generateQuestions, evaluateAnswers };
+const generateHint = async (question, currentAnswer, role, experienceLevel) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `
+        You are a helpful interview assistant for a ${role} position (Experience: ${experienceLevel}).
+        The candidate is stuck on the following question:
+        "${question}"
+
+        Their current partial answer is:
+        "${currentAnswer || "No answer started yet."}"
+
+        Provide a very short, helpful hint (1-2 sentences) to nudge them in the right direction. 
+        CRITICAL: Do NOT give away the full answer. Focus on a concept, a logic step, or a potential edge case they might have missed.
+    `;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+  } catch (error) {
+    console.error("AI Hint Generation Error:", error);
+    throw error;
+  }
+};
+
+module.exports = { generateQuestions, evaluateAnswers, generateHint };

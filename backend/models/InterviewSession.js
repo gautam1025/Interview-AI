@@ -40,6 +40,11 @@ const interviewSessionSchema = new mongoose.Schema(
       strengths: [String],
       weaknesses: [String],
       improvementPlan: [String],
+    },
+    hintsUsed: {
+      type: Map,
+      of: Number,
+      default: {},
     }
   },
   { timestamps: true }

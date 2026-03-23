@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const protect = require("../middleware/authMiddleware");
 const InterviewSession = require("../models/InterviewSession");
-const { generateQuestions, evaluateAnswers } = require("../services/aiService");
+const { generateQuestions, evaluateAnswers, generateHint } = require("../services/aiService");
 
 // Route to generate a new interview session
 router.post("/create", protect, async (req, res) => {
@@ -78,11 +78,13 @@ router.post("/submit/:id", protect, async (req, res) => {
       session.role,
       session.experienceLevel,
       session.questions,
-      answers
+      answers,
+      Object.fromEntries(session.hintsUsed || new Map())
     );
-
-    session.evaluation = evaluation;
-    session.totalScore = evaluation.overallScore;
+    
+    // Correct the assignment from the new evaluation result structure
+    session.evaluation = evaluation.evaluation;
+    session.totalScore = evaluation.totalScore;
 
     await session.save();
 
@@ -130,6 +132,33 @@ router.get("/", protect, async (req, res) => {
       message: "Failed to fetch sessions",
       error: error.message,
     });
+  }
+});
+
+router.post("/:id/hint", protect, async (req, res) => {
+  try {
+    const { question, currentAnswer, questionIndex } = req.body;
+    const session = await InterviewSession.findById(req.params.id);
+
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+
+    if (session.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    const hint = await generateHint(question, currentAnswer, session.role, session.experienceLevel);
+
+    // Track hint usage
+    if (!session.hintsUsed) session.hintsUsed = new Map();
+    const currentHints = session.hintsUsed.get(questionIndex.toString()) || 0;
+    session.hintsUsed.set(questionIndex.toString(), currentHints + 1);
+    await session.save();
+
+    res.json({ hint });
+  } catch (error) {
+    res.status(500).json({ message: "Error generating hint", error: error.message });
   }
 });
 

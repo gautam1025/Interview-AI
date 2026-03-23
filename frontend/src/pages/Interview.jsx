@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import API from "../api/axios";
-import { Loader2, Send, AlertCircle, FileQuestion, Mic, Square, MicOff, Code } from "lucide-react";
+import { Loader2, Send, AlertCircle, FileQuestion, Mic, Square, MicOff, Code, Lightbulb, Sparkles } from "lucide-react";
 import Editor from "@monaco-editor/react";
 
 function Interview() {
@@ -16,6 +16,9 @@ function Interview() {
   const [speechError, setSpeechError] = useState("");
   const [activeEditors, setActiveEditors] = useState({}); // tracks { index: boolean } for code editor toggle
   const [editorLanguages, setEditorLanguages] = useState({}); // tracks { index: string } for selected language
+  const [hints, setHints] = useState({}); // tracks { index: string } for hints received
+  const [hintCooldowns, setHintCooldowns] = useState({}); // tracks { index: number } for cooldown seconds
+  const [isRequestingHint, setIsRequestingHint] = useState(null); // tracks question index currently fetching hint
 
   // Reference for the active SpeechRecognition instance
   const recognitionRef = useRef(null);
@@ -33,8 +36,24 @@ function Interview() {
       }
     })();
 
+    // Cooldown timer logic
+    const interval = setInterval(() => {
+      setHintCooldowns(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(idx => {
+          if (next[idx] > 0) {
+            next[idx] -= 1;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }, 1000);
+
     // Cleanup function: stop mic if component unmounts while recording
     return () => {
+      clearInterval(interval);
       if (recognitionRef.current) {
         recognitionRef.current.stop();
         recognitionRef.current = null;
@@ -61,6 +80,26 @@ function Interview() {
 
   const changeLanguage = (index, lang) => {
     setEditorLanguages(prev => ({ ...prev, [index]: lang }));
+  };
+
+  const requestHint = async (index) => {
+    if (hintCooldowns[index] > 0) return;
+    
+    setIsRequestingHint(index);
+    try {
+      const { data } = await API.post(`/interview/${id}/hint`, {
+        question: questions[index],
+        currentAnswer: answers[index],
+        questionIndex: index
+      });
+      
+      setHints(prev => ({ ...prev, [index]: data.hint }));
+      setHintCooldowns(prev => ({ ...prev, [index]: 60 })); // 60s cooldown
+    } catch {
+      setSpeechError("Failed to fetch hint.");
+    } finally {
+      setIsRequestingHint(null);
+    }
   };
 
   const startRecording = (index) => {
@@ -236,8 +275,18 @@ function Interview() {
             />
           )}
 
+          {hints[index] && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-3.5 flex items-start gap-3 animate-slide-up">
+              <Sparkles size={16} className="text-amber-500 mt-1 flex-shrink-0" />
+              <div>
+                <p className="text-[11px] font-bold text-amber-600 uppercase tracking-tight mb-0.5">Contextual Hint</p>
+                <p className="text-sm text-amber-900 leading-relaxed font-medium italic">"{hints[index]}"</p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex items-center gap-2">
               {isRecording !== index ? (
                 <button
                   onClick={() => {
@@ -259,6 +308,24 @@ function Interview() {
                   <Square size={13} className="fill-white" /> Stop Recording
                 </button>
               )}
+
+              <button
+                type="button"
+                disabled={hintCooldowns[index] > 0 || isRequestingHint === index}
+                onClick={() => requestHint(index)}
+                className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-all border shadow-sm ${
+                  hintCooldowns[index] > 0
+                    ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 active:scale-[0.98]"
+                }`}
+              >
+                {isRequestingHint === index ? (
+                  <Loader2 size={14} className="animate-spin text-blue-500" />
+                ) : (
+                  <Lightbulb size={14} className={hintCooldowns[index] > 0 ? "text-slate-300" : "text-amber-500"} />
+                )}
+                {hintCooldowns[index] > 0 ? `Hint (${hintCooldowns[index]}s)` : "Get Hint"}
+              </button>
             </div>
             <span className="text-xs text-slate-400">{answers[index].length} characters</span>
           </div>
